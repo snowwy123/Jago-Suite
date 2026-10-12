@@ -1,0 +1,9 @@
+test-stage:start
+test-stage:existing studies
+test-stage:selection checks
+test-stage:new controls
+test-stage:pixel canvas
+test-stage:pivot
+test-stage:embedded examples
+test-stage:chalk and hint
+test-stage:native exports

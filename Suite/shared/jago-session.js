@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: MIT
+(() => {
+ let adapter,revision=0,dirty=false,pending=false,focused=true,lastChange=Date.now();
+ const changed=e=>{if(e?.target?.closest('.jago-suite-dialog'))return;revision++;dirty=true;lastChange=Date.now();};
+ for(const event of ['input','change','pointerup','drop'])document.addEventListener(event,changed,true);
+ document.addEventListener('keydown',e=>{if(['Delete','Backspace'].includes(e.key)||((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase())))changed(e)},true);
+ document.addEventListener('keydown',e=>{if(!window.chrome?.webview||!window.JagoWorkspaceConnected)return;const action=e.ctrlKey&&e.key==='Tab'?(e.shiftKey?'previous':'next'):e.ctrlKey&&e.key.toLowerCase()==='t'?'home':e.ctrlKey&&e.altKey&&e.key.toLowerCase()==='s'?'save':null;if(action){e.preventDefault();e.stopImmediatePropagation();chrome.webview.postMessage({type:'jago-workspace-action',action})}},true);
+ window.JagoSession={bind:a=>adapter=a,status(){return {studio:adapter?.id,name:(adapter?.getAudioProject?.()?.name||document.querySelector('#projectName,#worldName,#name')?.value||document.title).slice(0,120),revision,dirty,pending,focused,idleFor:Date.now()-lastChange}},async capture(){if(!adapter?.captureDocument)throw Error('This studio is still opening.');pending=true;try{return {studio:adapter.id,name:this.status().name,revision,document:await adapter.captureDocument()}}finally{pending=false}},async restore(data){if(!adapter?.restoreDocument)throw Error('This studio cannot restore the document yet.');await adapter.ready?.();await adapter.restoreDocument(data);revision++;dirty=true;},async focus(active){focused=active;if(!active){adapter?.pauseWorkspace?.();for(const media of document.querySelectorAll('audio,video'))media.pause();document.dispatchEvent(new Event('jago-workspace-hidden'));}document.documentElement.dataset.workspaceFocus=String(active);},markSaved(){dirty=false}};
+ const style=document.createElement('style');style.textContent='html[data-workspace-focus="false"] *{animation-play-state:paused!important}';document.head.append(style);
+})();
