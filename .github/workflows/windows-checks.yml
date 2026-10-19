@@ -1,0 +1,43 @@
+name: Windows build and resilience matrix
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  GIT_LFS_SKIP_SMUDGE: '1'
+jobs:
+  verify:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            experimental: false
+          - os: windows-2025
+            experimental: false
+          - os: windows-11-arm
+            experimental: true
+    steps:
+      - name: Check out suite checks
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          path: GitHub/Jago-Suite
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - name: Fetch pinned studio revisions
+        run: python GitHub/Jago-Suite/Development/Hardening/checkout-revisions.py GitHub
+      - name: Build and run model checks
+        run: python GitHub/Jago-Suite/Development/Hardening/run-matrix.py GitHub Check-output
+      - name: Native trust and atomic recovery checks
+        run: python GitHub/Jago-Suite/Development/Hardening/run-host-security.py Check-output/Host

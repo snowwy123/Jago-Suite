@@ -1,0 +1,17 @@
+{
+  "checkout": {
+    "ref": "v6",
+    "sha": "d23441a48e516b6c34aea4fa41551a30e30af803",
+    "source": "https://github.com/actions/checkout/commit/d23441a48e516b6c34aea4fa41551a30e30af803"
+  },
+  "setup-node": {
+    "ref": "v6",
+    "sha": "249970729cb0ef3589644e2896645e5dc5ba9c38",
+    "source": "https://github.com/actions/setup-node/commit/249970729cb0ef3589644e2896645e5dc5ba9c38"
+  },
+  "setup-python": {
+    "ref": "v6",
+    "sha": "ece7cb06caefa5fff74198d8649806c4678c61a1",
+    "source": "https://github.com/actions/setup-python/commit/ece7cb06caefa5fff74198d8649806c4678c61a1"
+  }
+}
