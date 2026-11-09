@@ -1,15 +1,20 @@
 from pathlib import Path
 import argparse,json,subprocess,shutil
 a=argparse.ArgumentParser();a.add_argument('--payload',required=True);a.add_argument('--output',required=True);a.add_argument('--version',default='0.3.8');a.add_argument('--test',action='store_true');a.add_argument('--release-branding',action='store_true');args=a.parse_args()
-repo=Path(r'C:\Jago Studio Dev\GitHub\Jago-Suite'); payload=Path(args.payload).resolve();out=Path(args.output).resolve();out.mkdir(parents=True,exist_ok=True)
+repo=Path(__file__).resolve().parents[1]; payload=Path(args.payload).resolve();out=Path(args.output).resolve();out.mkdir(parents=True,exist_ok=True)
 specs=[('workscape','Workscape','','Bring studios together in tabs and side-by-side views'),('wobble','Wobble','Wobble','Draw and animate illustrations'),('dither','Dither','Dither','Dithering, palettes and print effects'),('repeat','Repeat','Repeat','Build seamless repeating patterns'),('worldbuilding','World','Worldbuilding','Maps, characters and worldbuilding'),('material','Material','Material','Procedural textures and surface materials'),('music','Sound','Music-SFX','Compose music and create sound effects'),('library','Library','Library-Production','Assets, fonts, boards, layouts and document tools'),('companion','Companion','Companion','Quick notes, sticky tasks and screen captures'),('pulse','Pulse','Pulse','Music-driven films and procedural visuals')]
+if (payload/'3D-Workshop').exists():
+ for required in ['Jago-3D-Workshop.exe','Jago-3D-Workshop.html','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll']:
+  if not (payload/'3D-Workshop'/required).is_file():raise ValueError('Incomplete 3D Workshop payload: '+required)
+ specs.insert(next(i for i,spec in enumerate(specs) if spec[0]=='material')+1,('workshop','3D-Workshop','3D-Workshop','Build and stage editable 3D scenes'))
+def display(name):return '3D Workshop' if name=='3D-Workshop' else name
 def quote(s):return s.replace('"','""')
 def relapp(name,folder):return (folder+'\\' if folder else '')+'Jago-'+name+'.exe'
 appid='JagoSuiteSavepointTest' if args.test else 'JagoSuiteInstallerPreview'; channel='SavepointTest' if args.test else 'Preview'
 group='Jago Suite Isolated Test' if args.test else 'Jago Suite Preview'
 iss=['[Setup]',f'AppId={appid}',f'AppName={group}',f'AppVersion={args.version}','AppPublisher=Cameron Jago Lis Illustrates','AppPublisherURL=https://jagosuite.co.uk/',f'DefaultDirName={{localappdata}}\\Programs\\{group}',f'DefaultGroupName={group}','PrivilegesRequired=lowest','ArchitecturesAllowed=x64compatible','ArchitecturesInstallIn64BitMode=x64compatible','DisableProgramGroupPage=yes','DisableWelcomePage=no','UsePreviousAppDir=yes','UsePreviousTasks=yes','UsePreviousSetupType=yes','WizardStyle=modern light','WizardSizePercent=120',f'WizardImageFile={repo}/Installer/Brand/wizard.bmp',f'WizardSmallImageFile={repo}/Installer/Brand/small.bmp','WizardImageStretch=yes','WizardImageBackColor=$E7F2F6','WizardBackColor=$E7F2F6',f'SetupIconFile={repo}/Installer/Brand/setup.ico','UninstallDisplayIcon={app}\\Branding\\setup.ico',f'OutputDir={out}',f'OutputBaseFilename=Jago-Suite-Setup-{"Isolated-Test" if args.test else "Preview"}','Compression=zip','SolidCompression=no','CloseApplications=yes','RestartApplications=no','[Types]','Name: full; Description: "All studios, Companion and optional offline tools"','Name: compact; Description: "All studios and Companion; without Office renderer or lyric model"','Name: custom; Description: "Choose individual apps and tools"; Flags: iscustom','[Components]']
 for key,name,folder,benefit in specs:
- iss.append(f'Name: "{key}"; Description: "{name} - {benefit}"; Types: full compact')
+ iss.append(f'Name: "{key}"; Description: "{display(name)} - {benefit}"; Types: full compact')
  if key=='library':
   for child,title,types in [('documents','Office previews - view Word, Excel and PowerPoint offline (larger disk footprint)','full'),('pdf','PDF engine - reconstruct and export PDFs offline','full compact'),('ocr','OCR - recognise text in scanned documents offline','full compact')]:iss.append(f'Name: "library\\{child}"; Description: "{title}"; Types: {types}')
  if key=='pulse' and (payload/'Pulse/Transcription').exists():
@@ -21,6 +26,7 @@ if not args.test:
  pilotText=(repo/'Installer/pilot.iss').read_text(encoding='utf-8-sig')
  iss += [line for line in pilotText.split('[Tasks]\n')[1].split('[Files]')[0].splitlines() if 'Name: "desktop"' not in line]
 iss+=['Name: boardshortcut; Description: "Jago Board shortcut - open Library reference boards directly from Start"; Components: library; Flags: unchecked']
+if (payload/'ExplorerThumbnails/Jago-Explorer-Thumbnails-Setup.exe').exists():iss.append('Name: explorerthumbnails; Description: "Set up Explorer project thumbnails (optional Windows component; administrator approval)"; Flags: unchecked')
 iss+=['[Files]']
 owned=[]
 for f in sorted(payload.rglob('*')):
@@ -30,6 +36,7 @@ for f in sorted(payload.rglob('*')):
  if rel.startswith('Library-Production\\Tools\\PDF\\'):comp='library\\pdf'
  if rel.startswith('Library-Production\\Tools\\OCR\\'):comp='library\\ocr'
  if rel.startswith('Pulse\\Transcription\\'):comp='pulse\\transcription'
+ if rel.startswith('ExplorerThumbnails\\'):comp=None
  if rel in ['Jago-Workscape.exe','Workscape-LICENSE.txt'] or rel.startswith('Documentation\\Workscape\\'):comp='workscape'
  dest=str(Path(rel).parent); dest='' if dest=='.' else '\\'+dest
  iss.append(f'Source: "{quote(str(f))}"; DestDir: "{{app}}{dest}"; Flags: ignoreversion'+(f'; Components: "{comp}"' if comp else ''))
@@ -40,8 +47,8 @@ for comp,rel in owned:
  iss.append(f'Type: files; Name: "{{app}}\\{rel}"; Check: RemoveComponentFile(\'{comp}\', \'{rel}\')')
 iss+=['[Icons]']
 for key,name,folder,benefit in specs:
- exe=relapp(name,folder);iss.append(f'Name: "{{group}}\\Jago {name}"; Filename: "{{app}}\\{exe}"; Components: {key}')
- iss.append(f'Name: "{{userdesktop}}\\Jago {name} Preview"; Filename: "{{app}}\\{exe}"; Components: {key}; Tasks: desktop')
+ exe=relapp(name,folder);iss.append(f'Name: "{{group}}\\Jago {display(name)}"; Filename: "{{app}}\\{exe}"; Components: {key}')
+ iss.append(f'Name: "{{userdesktop}}\\Jago {display(name)} Preview"; Filename: "{{app}}\\{exe}"; Components: {key}; Tasks: desktop')
 iss+=['Name: "{group}\\Jago Capture"; Filename: "{app}\\Companion\\Jago-Capture.exe"; Components: companion; AppUserModelID: "Jago.Capture"','Name: "{userdesktop}\\Jago Capture Preview"; Filename: "{app}\\Companion\\Jago-Capture.exe"; Components: companion; Tasks: desktop; AppUserModelID: "Jago.Capture"']
 iss+=['Name: "{group}\\Jago Board"; Filename: "{app}\\Library-Production\\Jago-Board.exe"; Components: library; Tasks: boardshortcut; AppUserModelID: "Jago.Board"']
 iss+=['Name: "{group}\\Uninstall Jago Suite Preview"; Filename: "{uninstallexe}"','[Registry]']
@@ -49,6 +56,7 @@ for key,name,folder,benefit in specs:
  registry='workspace' if key=='workscape' else key
  iss.append(f'Root: HKCU; Subkey: "Software\\Jago Suite\\{channel}\\Components\\{registry}"; ValueType: string; ValueName: Executable; ValueData: "{{app}}\\{relapp(name,folder)}"; Components: {key}; Flags: uninsdeletekey')
 iss+=['[Run]','Filename: "{app}\\Companion\\Jago-Capture.exe"; Parameters: "--register'+(' --test-shell' if args.test else '')+'"; Components: companion; Flags: runhidden','Filename: "{app}\\Library-Production\\Jago-Board.exe"; Parameters: "--register'+(' --test-shell' if args.test else '')+'"; Components: library; Flags: runhidden','Filename: "{app}\\Jago-Preview-Launcher.exe"; Parameters: "{code:LaunchArguments}"; Description: "Open Jago Workscape"; Check: HasWorkscape; Flags: postinstall nowait skipifsilent','Filename: "{app}\\Jago-Preview-Launcher.exe"; Parameters: "{code:LaunchArguments}"; Description: "Open selected apps in separate windows"; Check: NoWorkscape; Flags: postinstall nowait skipifsilent unchecked','[Code]','var LyricsInfoPage: TOutputMsgWizardPage;','function PathAttributes(Name: String): LongWord; external \'GetFileAttributesW@kernel32.dll stdcall\';']
+if (payload/'ExplorerThumbnails/Jago-Explorer-Thumbnails-Setup.exe').exists():iss.insert(iss.index('[Code]'),'Filename: "{app}\\ExplorerThumbnails\\Jago-Explorer-Thumbnails-Setup.exe"; Tasks: explorerthumbnails; Description: "Set up Explorer thumbnails"; Flags: postinstall shellexec skipifsilent')
 if not args.test:
  associations=[line for line in pilotText.split('[Registry]\n')[1].split('[Run]')[0].splitlines() if 'Software\\Classes' in line]
  at=iss.index('[Run]');iss[at:at]=associations
@@ -74,8 +82,8 @@ if not args.test:
   iss.append(f"if not WizardIsComponentSelected('{comp}') or not WizardIsTaskSelected('{task}') then begin RegDeleteValue(HKCU,'Software\\Classes\\{ext}\\OpenWithProgids','{progid}'); RegDeleteKeyIncludingSubkeys(HKCU,'Software\\Classes\\{progid}'); end;")
 for key,name,folder,benefit in specs:
  registry='workspace' if key=='workscape' else key; path=relapp(name,folder)
- iss.append(f"if not WizardIsComponentSelected('{key}') then begin\n if RegQueryStringValue(HKCU, 'Software\\Jago Suite\\{channel}\\Components\\{registry}', 'Executable', Existing) and (CompareText(Existing, ExpandConstant('{{app}}\\{path}'))=0) then RegDeleteKeyIncludingSubkeys(HKCU, 'Software\\Jago Suite\\{channel}\\Components\\{registry}');\n DeleteFile(ExpandConstant('{{group}}\\Jago {name}.lnk')); end;")
- iss.append(f"if not WizardIsComponentSelected('{key}') or not WizardIsTaskSelected('desktop') then DeleteFile(ExpandConstant('{{userdesktop}}\\Jago {name} Preview.lnk'));")
+ iss.append(f"if not WizardIsComponentSelected('{key}') then begin\n if RegQueryStringValue(HKCU, 'Software\\Jago Suite\\{channel}\\Components\\{registry}', 'Executable', Existing) and (CompareText(Existing, ExpandConstant('{{app}}\\{path}'))=0) then RegDeleteKeyIncludingSubkeys(HKCU, 'Software\\Jago Suite\\{channel}\\Components\\{registry}');\n DeleteFile(ExpandConstant('{{group}}\\Jago {display(name)}.lnk')); end;")
+ iss.append(f"if not WizardIsComponentSelected('{key}') or not WizardIsTaskSelected('desktop') then DeleteFile(ExpandConstant('{{userdesktop}}\\Jago {display(name)} Preview.lnk'));")
 iss.append("if not WizardIsComponentSelected('companion') then DeleteFile(ExpandConstant('{group}\\Jago Capture.lnk'));")
 iss.append("if not WizardIsComponentSelected('companion') or not WizardIsTaskSelected('desktop') then DeleteFile(ExpandConstant('{userdesktop}\\Jago Capture Preview.lnk'));")
 iss.append("if not WizardIsComponentSelected('library') or not WizardIsTaskSelected('boardshortcut') then DeleteFile(ExpandConstant('{group}\\Jago Board.lnk'));")
@@ -88,6 +96,7 @@ if args.test:iss=[line.replace('AppUserModelID: "Jago.Capture"','AppUserModelID:
 if args.release_branding:
  iss=[line.replace('Jago Suite Preview','Jago Suite').replace('Jago-Preview-Launcher.exe','Jago-Suite-Launcher.exe').replace(' Preview\"','\"').replace(' Preview.lnk','.lnk').replace('Update this preview at ','Update this installation at ') for line in iss]
  if not args.test:iss=[line.replace('OutputBaseFilename=Jago-Suite-Setup-Preview','OutputBaseFilename=Jago-Suite-Setup-v'+args.version) for line in iss]
+if not (payload/'Jago-Preview-Launcher.exe').exists() and (payload/'Jago-Suite-Launcher.exe').exists():iss=[line.replace('Jago-Preview-Launcher.exe','Jago-Suite-Launcher.exe') for line in iss]
 script=out/'full-suite.iss';script.write_text('\n'.join(iss),encoding='utf-8-sig')
 subprocess.run([r'C:\Jago Studio Dev\work\Installer-Pilot\Compiler\ISCC.exe',str(script)],check=True,stdout=(out/'compiler.log').open('w',encoding='utf-8'),stderr=subprocess.STDOUT)
 print('Built '+str(out))

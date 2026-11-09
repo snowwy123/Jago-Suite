@@ -1,0 +1,4 @@
+LIBRARY Jago.ProjectThumbnails
+EXPORTS
+ DllGetClassObject PRIVATE
+ DllCanUnloadNow PRIVATE

@@ -1,0 +1,3 @@
+# Authored musical timing v1
+
+musical-timing.js is the shared original validator/packer/merge helper. Sound includes musicalTiming in a jago-studio-transfer audio package; Pulse reviews and imports it. The bounded, finite data contains tempo, duration, loop, non-overlapping section ranges and timed drum cues. It contains no executable expressions, network assets or model requirement. Sound-generated scheduled events are authoritative; arbitrary audio analysis is a separate estimated path. Keep helper copies identical in Sound and Pulse. User-authored manual ranges and corrections win by default; replacement is explicit. See each app's Documentation/Sound-Handoff.md.

@@ -1,0 +1,7 @@
+# Jago saved-cover format v1
+
+Main project documents keep their existing format and version. An optional first root property `_jagoPreview` contains `{version:1,png:"BASE64",width:W,height:H}` in exactly that property order. PNG only; at most 512 px on either edge, 384 KiB base64 and 288 KiB decoded. Studio covers normally use a 384 px longest edge, reducing when needed. Native readers examine only the first 512 KiB of the stream and reject oversized/invalid PNG IHDR before decoding. They do not render projects or follow referenced paths. Metadata does not assert that the remaining document is valid.
+
+The JavaScript helper adds metadata to serialized save copies rather than changing live creative state. Existing files without a cover still open. Library's native reader falls back to a named project card; Explorer returns no thumbnail and keeps its normal icon. Generic .json/.md files and file-open defaults are untouched. Core code is original MIT; Microsoft Shell/WIC APIs are used.
+
+Research: https://learn.microsoft.com/en-us/windows/win32/shell/thumbnail-providers and https://learn.microsoft.com/en-us/windows/win32/shell/building-thumbnail-providers . New providers retain IInitializeWithStream process isolation. The isolated service did not activate the per-user class in the local test, although direct COM and native extraction passed; an admin-installed machine-wide class is therefore packaged separately from non-elevated creative app files. No production DisableProcessIsolation flag is set.
